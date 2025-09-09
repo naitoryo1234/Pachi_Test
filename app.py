@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib import rcParams
 from matplotlib import font_manager
 from matplotlib.ticker import MultipleLocator
+import altair as alt
 
 
 # =============== データ読み込み & 前処理 ===============
@@ -332,28 +333,30 @@ def main() -> None:
     elif suika_mode.startswith("弱") and gap < 0.06:
         st.warning("弱スイカのみ・取得率補正ありでも判別が弱いです。合算に切り替えると安定します。")
 
-    # ===== 可視化：事後確率 =====
+    # ===== 可視化：事後確率（Altairでブラウザフォントを使用＝日本語安定） =====
     st.subheader("設定ごとの事後確率")
-    fig, ax = plt.subplots(figsize=(6, 3.6))
-    if use_jp_plot_labels:
-        x_labels = [f"設定{int(s)}" for s in post_df["設定"].tolist()]
-        y_label = "事後確率(%)"
-    else:
-        x_labels = [f"Set {int(s)}" for s in post_df["設定"].tolist()]
-        y_label = "Posterior (%)"
-    y_vals = post_df["posterior"].to_numpy() * 100.0
-    winner_idx = int(post_df["posterior"].idxmax())
-    colors = ["#4C78A8" for _ in range(len(y_vals))]
-    if 0 <= winner_idx < len(colors):
-        colors[winner_idx] = "#d62728"
-    ax.bar(x_labels, y_vals, color=colors)
-    ax.set_ylabel(y_label)
-    ax.yaxis.set_major_locator(MultipleLocator(10))
-    ax.grid(axis="y", which="major", linestyle=":", alpha=0.4)
-    ax.set_ylim(0, max(100.0, float(y_vals.max() * 1.2)))
-    for idx, v in enumerate(y_vals):
-        ax.text(idx, v + max(1.0, y_vals.max() * 0.02), f"{v:.1f}%", ha="center", va="bottom", fontsize=9)
-    st.pyplot(fig, clear_figure=True)
+    chart_df = post_df.copy()
+    chart_df["設定ラベル"] = [f"設定{int(s)}" for s in chart_df["設定"].tolist()] if use_jp_plot_labels else [f"Set {int(s)}" for s in chart_df["設定"].tolist()]
+    chart_df["事後確率(%)"] = chart_df["posterior"] * 100.0
+    winner_setting = int(post_df.loc[post_df["posterior"].idxmax(), "設定"]) if len(post_df) else None
+    chart_df["色"] = np.where(chart_df["設定"] == winner_setting, "#d62728", "#4C78A8")
+
+    y_title = "事後確率(%)" if use_jp_plot_labels else "Posterior (%)"
+    max_y = float(max(100.0, chart_df["事後確率(%)"].max() * 1.2))
+
+    bars = alt.Chart(chart_df).mark_bar().encode(
+        x=alt.X("設定ラベル:N", title=""),
+        y=alt.Y("事後確率(%) :Q", title=y_title, scale=alt.Scale(domain=[0, max_y], nice=False)),
+        color=alt.Color("色:N", scale=None, legend=None),
+        tooltip=[alt.Tooltip("設定:N"), alt.Tooltip("事後確率(%) :Q", format=".1f")]
+    )
+    texts = alt.Chart(chart_df).mark_text(dy=-5, color="#333", fontSize=12).encode(
+        x="設定ラベル:N",
+        y="事後確率(%) :Q",
+        text=alt.Text("事後確率(%) :Q", format=".1f")
+    )
+    grid = alt.Chart(pd.DataFrame({"y": list(range(0, 101, 10))})).mark_rule(strokeDash=[2,2], color="#cccccc", opacity=0.4).encode(y="y:Q")
+    st.altair_chart((grid + bars + texts).properties(width=500, height=260), use_container_width=True)
 
     # ===== 詳細テーブル =====
     st.markdown("---")
