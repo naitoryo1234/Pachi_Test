@@ -362,10 +362,10 @@ def main() -> None:
     fig, ax = plt.subplots(figsize=(6, 3.6))
     if use_jp_plot_labels:
         x_labels = [f"設定{int(s)}" for s in post_df["設定"].tolist()]
-        y_label = "事後確率(%)"
+        y_label = "事後確率（%）"
     else:
-        x_labels = [f"Set {int(s)}" for s in post_df["設定"].tolist()]
-        y_label = "Posterior (%)"
+        x_labels = [f"Setting {int(s)}" for s in post_df["設定"].tolist()]
+        y_label = "Posterior probability (%)"
     y_vals = post_df["posterior"].to_numpy() * 100.0
     winner_idx = int(post_df["posterior"].idxmax())
     colors = ["#4C78A8" for _ in range(len(y_vals))]
