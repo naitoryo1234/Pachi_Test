@@ -147,6 +147,29 @@ def main() -> None:
     except Exception:
         pass
 
+    # Matplotlibの日本語フォント可用性を簡易チェック（見つからなければ英字ラベルにフォールバック）
+    def has_cjk_font() -> bool:
+        try:
+            from matplotlib.font_manager import findfont, FontProperties
+            candidates = [
+                "Noto Sans CJK JP",
+                "IPAPGothic",
+                "IPAexGothic",
+                "TakaoGothic",
+                "Yu Gothic",
+                "Meiryo",
+                "MS Gothic",
+            ]
+            for name in candidates:
+                path = findfont(FontProperties(family=name), fallback_to_default=False)
+                if path and isinstance(path, str) and len(path) > 0:
+                    return True
+        except Exception:
+            return False
+        return False
+
+    use_jp_plot_labels = has_cjk_font()
+
     # データ読込
     try:
         raw_df = load_estimates("data/estimated_values.csv")
@@ -297,14 +320,19 @@ def main() -> None:
     # ===== 可視化：事後確率 =====
     st.subheader("設定ごとの事後確率")
     fig, ax = plt.subplots(figsize=(6, 3.6))
-    x_labels = [f"設定{int(s)}" for s in post_df["設定"].tolist()]
+    if use_jp_plot_labels:
+        x_labels = [f"設定{int(s)}" for s in post_df["設定"].tolist()]
+        y_label = "事後確率(%)"
+    else:
+        x_labels = [f"Set {int(s)}" for s in post_df["設定"].tolist()]
+        y_label = "Posterior (%)"
     y_vals = post_df["posterior"].to_numpy() * 100.0
     winner_idx = int(post_df["posterior"].idxmax())
     colors = ["#4C78A8" for _ in range(len(y_vals))]
     if 0 <= winner_idx < len(colors):
         colors[winner_idx] = "#d62728"
     ax.bar(x_labels, y_vals, color=colors)
-    ax.set_ylabel("事後確率(%)")
+    ax.set_ylabel(y_label)
     ax.yaxis.set_major_locator(MultipleLocator(10))
     ax.grid(axis="y", which="major", linestyle=":", alpha=0.4)
     ax.set_ylim(0, max(100.0, float(y_vals.max() * 1.2)))
