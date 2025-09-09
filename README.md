@@ -1,8 +1,5 @@
 # Streamlit Demo App
 
-This repository contains a minimal Streamlit application.
-It reads estimated values from a CSV file and provides simple statistical calculations and visualizations.
-
 ---
 
 ## Requirements
@@ -27,11 +24,9 @@ Run locally:
 streamlit run app.py
 ```
 
-Then open the displayed local URL in your browser.
-
 ---
 
 ## Notes
-
-- This app uses estimated values from a CSV file.
-- It is intended for demonstration and reference purposes only.
+- This app uses **estimated values from a CSV file**, not official values.
+- The estimates were **created independently** for demonstration purposes.
+- Results are for educational and reference purposes only.

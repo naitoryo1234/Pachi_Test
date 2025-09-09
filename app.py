@@ -149,7 +149,7 @@ def main() -> None:
 
     # データ読込
     try:
-        raw_df = load_estimates("data/eva_koyaku_estimates_close_to_image.csv")
+        raw_df = load_estimates("data/estimated_values.csv")
     except Exception as e:
         st.error(f"CSVの読み込みに失敗しました: {e}")
         return
