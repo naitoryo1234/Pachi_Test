@@ -197,13 +197,21 @@ def main() -> None:
     # ===== サイドバー入力 =====
     st.sidebar.header("入力")
 
+    # セッション初期化（値保持用）
+    if "total_games" not in st.session_state:
+        st.session_state.total_games = 1000
+    if "suika_mode" not in st.session_state:
+        st.session_state.suika_mode = "合算（おすすめ）"
+    if "q_suika" not in st.session_state:
+        st.session_state.q_suika = 0.95
+
     # スイカの扱い切替：合算 or 弱のみ
     suika_mode = st.sidebar.radio(
         "スイカの扱い",
         options=("合算（おすすめ）", "弱のみ"),
-        index=0,
+        index=(0 if st.session_state.suika_mode.startswith("合算") else 1),
         help="実戦では合算カウントが一般的なので『合算』推奨。弱のみカウントの場合は『弱のみ』を選択。"
-    )
+    , key="suika_mode")
     if suika_mode.startswith("合算"):
         suika_col = "スイカ合算(1/x)"
         suika_label = "スイカ（合算）"
@@ -215,8 +223,9 @@ def main() -> None:
     q_suika = 1.0
     if suika_mode.startswith("弱"):
         q_suika = st.sidebar.slider(
-            "弱スイカ取得率 q（実戦補正）", min_value=0.80, max_value=1.00, value=0.95, step=0.01,
-            help="取りこぼし等で実効が下がる想定。期待確率 p を q 倍で補正します。"
+            "弱スイカ取得率 q（実戦補正）", min_value=0.80, max_value=1.00, value=st.session_state.q_suika, step=0.01,
+            help="取りこぼし等で実効が下がる想定。期待確率 p を q 倍で補正します。",
+            key="q_suika",
         )
         st.caption("弱のみ：取得率qで実戦補正中。判別が不安定なら合算にすると安定します。")
     else:
@@ -229,14 +238,32 @@ def main() -> None:
         (suika_col, suika_label),
     ]
 
-    total_games = st.sidebar.number_input("総ゲーム数", min_value=1, max_value=1_000_000, value=1000, step=10)
+    total_games = st.sidebar.number_input("総ゲーム数", min_value=1, max_value=1_000_000, value=st.session_state.total_games, step=10, key="total_games")
 
     # 小役カウント入力（列名キーで持つ）
     counts: Dict[str, int] = {}
     for col, label in ui_roles:
+        key_name = f"count_{col}"
+        if key_name not in st.session_state:
+            st.session_state[key_name] = 0
         counts[col] = int(
-            st.sidebar.number_input(f"{label} 回数", min_value=0, max_value=1_000_000, value=0, step=1)
+            st.sidebar.number_input(f"{label} 回数", min_value=0, max_value=1_000_000, value=st.session_state[key_name], step=1, key=key_name)
         )
+
+    # 操作ボタン
+    col_btn1, col_btn2 = st.sidebar.columns(2)
+    with col_btn1:
+        st.button("更新", use_container_width=True)
+    def _clear_all():
+        st.session_state.total_games = 1000
+        st.session_state.suika_mode = "合算（おすすめ）"
+        st.session_state.q_suika = 0.95
+        for col, _ in ui_roles:
+            st.session_state[f"count_{col}"] = 0
+    with col_btn2:
+        if st.button("クリア", use_container_width=True):
+            _clear_all()
+            st.experimental_rerun()
 
     # バリデーション：相互排他ゆえ 合計 > 総G はNG
     sum_counts = sum(counts[col] for col, _ in ui_roles)
