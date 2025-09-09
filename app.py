@@ -250,10 +250,8 @@ def main() -> None:
             st.sidebar.number_input(f"{label} 回数", min_value=0, max_value=1_000_000, value=st.session_state[key_name], step=1, key=key_name)
         )
 
-    # 操作ボタン
-    col_btn1, col_btn2 = st.sidebar.columns(2)
-    with col_btn1:
-        st.button("更新", use_container_width=True)
+    # クリアボタン（値はセッションで保持。更新ボタンは不要）
+    col_btn2 = st.sidebar
     def _clear_all():
         st.session_state.total_games = 1000
         st.session_state.suika_mode = "合算（おすすめ）"
@@ -385,17 +383,23 @@ def main() -> None:
     # ===== 詳細テーブル =====
     st.markdown("---")
     st.subheader("詳細テーブル（ベイズ事後確率 & 参考統計）")
+    stats = compute_statistics(total_games, counts, prob_eff, ui_roles)
     display_df = post_df.merge(
-        compute_statistics(total_games, counts, prob_df, ui_roles)[["設定", "chi2", "sq_error"]],
+        stats[["設定", "chi2", "sq_error"]],
         on="設定", how="left"
     )
     display_df["事後確率(%)"] = display_df["posterior"] * 100.0
+    # 日本語見出しに置換
+    display_df = display_df.rename(columns={
+        "chi2": "カイ二乗値",
+        "sq_error": "平方誤差（確率差の二乗）",
+    })
     st.dataframe(
-        display_df[["設定", "事後確率(%)", "chi2", "sq_error"]]
+        display_df[["設定", "事後確率(%)", "カイ二乗値", "平方誤差（確率差の二乗）"]]
         .style.format({
             "事後確率(%)": "{:.2f}%",
-            "chi2": "{:.3f}",
-            "sq_error": "{:.6f}",
+            "カイ二乗値": "{:.3f}",
+            "平方誤差（確率差の二乗）": "{:.6f}",
         }),
         use_container_width=True,
         hide_index=True,
