@@ -1,4 +1,5 @@
 import math
+import os
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -6,6 +7,7 @@ import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
+from matplotlib import font_manager
 from matplotlib.ticker import MultipleLocator
 
 
@@ -147,10 +149,10 @@ def main() -> None:
     except Exception:
         pass
 
-    # Matplotlibの日本語フォント可用性を簡易チェック（見つからなければ英字ラベルにフォールバック）
-    def has_cjk_font() -> bool:
+    # 日本語フォントが無ければ Noto Sans JP を動的取得して登録（Streamlit Cloud 向け）
+    def ensure_jp_font() -> bool:
         try:
-            from matplotlib.font_manager import findfont, FontProperties
+            from matplotlib.font_manager import findfont, FontProperties, fontManager
             candidates = [
                 "Noto Sans CJK JP",
                 "IPAPGothic",
@@ -164,11 +166,24 @@ def main() -> None:
                 path = findfont(FontProperties(family=name), fallback_to_default=False)
                 if path and isinstance(path, str) and len(path) > 0:
                     return True
+
+            # 動的ダウンロード（軽量な Noto Sans JP）
+            import urllib.request
+            cache_dir = os.path.join(".fonts")
+            os.makedirs(cache_dir, exist_ok=True)
+            font_path = os.path.join(cache_dir, "NotoSansJP-Regular.otf")
+            if not os.path.exists(font_path):
+                url = "https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Japanese/NotoSansJP-Regular.otf"
+                urllib.request.urlretrieve(url, font_path)
+            font_manager.fontManager.addfont(font_path)
+            rcParams["font.family"] = FontProperties(fname=font_path).get_name()
+            rcParams["axes.unicode_minus"] = False
+            return True
         except Exception:
             return False
         return False
 
-    use_jp_plot_labels = has_cjk_font()
+    use_jp_plot_labels = ensure_jp_font()
 
     # データ読込
     try:
